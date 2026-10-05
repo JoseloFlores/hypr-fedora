@@ -1,0 +1,5 @@
+install.log
+Install-Logs/
+*.log
+wallpaper.jpg
+.DS_Store
