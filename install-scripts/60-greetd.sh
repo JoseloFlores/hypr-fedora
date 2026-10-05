@@ -2,8 +2,12 @@
 # 60-greetd.sh — Greetd + tuigreet en Fedora (login texto en tty1).
 # En Debian existía GREETER=noctalia|tuigreet; en Fedora se usa siempre
 # tuigreet (noctalia-greeter solo existe en Terra F44+, fuera de alcance).
-# Usuario greeter: en Fedora el paquete greetd crea el usuario `greeter`
-# (en Debian era `_greetd`).
+# Usuario greeter: en Fedora el paquete greetd lo crea vía sysusers como
+# `greeter` (en Debian era `_greetd`). OJO: sysusers corre al arrancar, así
+# que recién instalado el usuario puede no existir aún: se fuerza con
+# systemd-sysusers y, si ni así, se crea a mano.
+# Ruta tuigreet: en Fedora vive en /usr/sbin (no /usr/bin): se resuelve
+# con `command -v` para no hardcodear una ruta que rompa el login.
 set -eo pipefail
 source "$(dirname "$(readlink -f "$0")")/Global_functions.sh"
 common_init "60-greetd"
@@ -11,22 +15,45 @@ common_init "60-greetd"
 log "6/10 Configurando greetd + tuigreet..."
 
 if [ "$DRY_RUN" = "1" ]; then
-    echo "[DRY-RUN] dnf greetd tuigreet + /etc/greetd/config.toml (tuigreet Hyprland) + usermod video/render/input + override Restart=always" | tee -a "$LOG"
+    echo "[DRY-RUN] dnf greetd tuigreet + sysusers greeter + /etc/greetd/config.toml (tuigreet ruta dinámica) + usermod video/render/input + override Restart=always" | tee -a "$LOG"
     exit 0
 fi
 
 dnf_install_resilient greetd tuigreet || true
 
+# El usuario greeter lo declara el paquete vía sysusers: forzarlo ahora
+# (recién instalado puede no existir hasta el próximo arranque).
+systemd-sysusers 2>/dev/null || true
+
 GREET_USER="greeter"
-id "$GREET_USER" &>/dev/null || GREET_USER="_greetd"
 if ! id "$GREET_USER" &>/dev/null; then
-    log_warn "no existe usuario greeter ni _greetd (¿greetd sin instalar?). Se usa 'greeter' igual."
-    GREET_USER="greeter"
+    id "_greetd" &>/dev/null && GREET_USER="_greetd"
 fi
+if ! id "$GREET_USER" &>/dev/null; then
+    log_warn "ni greeter ni _greetd existen tras systemd-sysusers: creando 'greeter' a mano."
+    useradd --system --no-create-home --shell /usr/sbin/nologin \
+        --groups video,input -c "greetd greeter" greeter 2>/dev/null || \
+    useradd --system --no-create-home --shell /usr/sbin/nologin \
+        -c "greetd greeter" greeter || true
+fi
+if ! id "$GREET_USER" &>/dev/null; then
+    log_error "no se pudo asegurar el usuario $GREET_USER; greetd no podrá arrancar el greeter."
+    exit 1
+fi
+log "-> usuario greeter: $GREET_USER ($(id -u "$GREET_USER"))"
+
+# Ruta real de tuigreet (Fedora: /usr/sbin; Debian: /usr/bin).
+TUIGREET_BIN="$(command -v tuigreet || true)"
+[ -z "$TUIGREET_BIN" ] && TUIGREET_BIN="/usr/sbin/tuigreet"
+if [ ! -x "$TUIGREET_BIN" ]; then
+    log_error "tuigreet no ejecutable en $TUIGREET_BIN; greetd no mostrará login."
+    exit 1
+fi
+log "-> tuigreet en $TUIGREET_BIN"
 
 mkdir -p /etc/greetd
 mkdir -p /var/cache/tuigreet
-chown -R "$GREET_USER": /var/cache/tuigreet 2>/dev/null || chown -R greeter: /var/cache/tuigreet 2>/dev/null || true
+chown -R "$GREET_USER": /var/cache/tuigreet || true
 chmod 0755 /var/cache/tuigreet || true
 
 cat > /etc/greetd/config.toml <<EOF
@@ -34,11 +61,11 @@ cat > /etc/greetd/config.toml <<EOF
 vt = 1
 [default_session]
 # Login texto con tuigreet (Hyprland capital H = sesión wayland de Fedora).
-command = "/usr/bin/tuigreet --time --remember --remember-session --asterisks --sessions /usr/share/wayland-sessions --cmd Hyprland"
+command = "$TUIGREET_BIN --time --remember --remember-session --asterisks --sessions /usr/share/wayland-sessions --cmd Hyprland"
 user = "$GREET_USER"
 EOF
 cp -a /etc/greetd/config.toml /etc/greetd/config.toml.bak-tuigreet 2>/dev/null || true
-log "-> tuigreet configurado (usuario $GREET_USER, sesión Hyprland)"
+log "-> tuigreet configurado ($TUIGREET_BIN, usuario $GREET_USER, sesión Hyprland)"
 
 usermod -aG video,render,input "$GREET_USER" 2>/dev/null || usermod -aG video,input "$GREET_USER" || true
 usermod -aG video,render,input,audio "$REAL_USER" || true
@@ -56,4 +83,4 @@ Restart=always
 RestartSec=5
 EOF
 systemctl daemon-reload
-log_ok "Greetd OK (tuigreet, usuario $GREET_USER)"
+log_ok "Greetd OK (tuigreet $TUIGREET_BIN, usuario $GREET_USER)"

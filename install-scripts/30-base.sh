@@ -10,7 +10,7 @@ log "3/10 Instalando herramientas base..."
 
 BASE_PKGS=(
     wget curl bc jq python3 fontconfig libnotify xdg-utils
-    gcc gcc-c++ make pkgconf-pkg-config unzip
+    gcc gcc-c++ make pkgconf-pkg-config unzip pciutils
     NetworkManager network-manager-applet iw rfkill
     gvfs gvfs-fuse udisks2 udiskie
     pipewire pipewire-alsa pipewire-pulseaudio wireplumber pavucontrol

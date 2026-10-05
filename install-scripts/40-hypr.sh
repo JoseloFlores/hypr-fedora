@@ -20,6 +20,8 @@ if ! dnf_install_resilient "${HYPR_PKGS[@]}"; then
     dnf copr enable -y sdegler/hyprland || log_warn "COPR falló, reintentando de todos modos."
     dnf_install_resilient "${HYPR_PKGS[@]}"
 fi
-# Utilidades Qt de Hyprland (nombre nuevo; el viejo hyprland-guiutils ya no existe).
-dnf_install_resilient hyprland-qtutils hyprland-qt-support || true
+# Utilidades Qt de Hyprland (nombres que cambian entre versiones;
+# hyprland-qtutils no existe en F44, solo hyprland-qt-support).
+dnf_install_resilient hyprland-qtutils || log_warn "hyprland-qtutils no disponible, se omite."
+dnf_install_resilient hyprland-qt-support || true
 log_ok "Hyprland stack OK"

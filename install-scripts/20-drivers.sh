@@ -29,5 +29,8 @@ else
     log "-> GPU genérica/VM: solo base Mesa."
 fi
 
-dnf_install_resilient linux-firmware sof-firmware alsa-sof-firmware || true
+dnf_install_resilient linux-firmware || true
+# SOF audio: nombres que cambian entre versiones (sof-firmware no existe en F44).
+dnf_install_resilient sof-firmware || log_warn "sof-firmware no disponible, se omite."
+dnf_install_resilient alsa-sof-firmware || log_warn "alsa-sof-firmware no disponible, se omite."
 log_ok "Drivers OK (GPU=$GPU_TYPE)"

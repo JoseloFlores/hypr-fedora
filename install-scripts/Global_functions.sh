@@ -154,6 +154,11 @@ detect_gpu() {
         return 0
     fi
     GPU_TYPE="generic"
+    if ! command -v lspci &>/dev/null; then
+        log_warn "sin lspci (pciutils) no se puede detectar la GPU; se asume generic."
+        export GPU_TYPE
+        return 0
+    fi
     if lspci 2>/dev/null | grep -iq "nvidia"; then
         GPU_TYPE="nvidia"
     elif lspci 2>/dev/null | grep -iq "amd.*\(vga\|display\|graphics\)\|Advanced Micro Devices"; then

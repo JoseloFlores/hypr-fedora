@@ -136,6 +136,14 @@ USER_HOME="$(getent passwd "$REAL_USER" | cut -d: -f6)"
 [ -z "$USER_HOME" ] || [ ! -d "$USER_HOME" ] && USER_HOME="$(eval echo ~"$REAL_USER")"
 
 GPU_TYPE="generic"
+# lspci vive en pciutils, ausente en la Everything mínima: sin él la
+# detección cae a "generic" aunque haya GPU real. Asegurarlo antes.
+if ! command -v lspci &>/dev/null && [ "$DRY_RUN" != "1" ]; then
+    dnf install -y pciutils 2>/dev/null || true
+fi
+if ! command -v lspci &>/dev/null; then
+    echo "ADVERTENCIA: sin lspci (pciutils) no se puede detectar la GPU; se asume generic." >&2
+fi
 if lspci 2>/dev/null | grep -iq "nvidia"; then GPU_TYPE="nvidia";
 elif lspci 2>/dev/null | grep -iq "amd.*\(vga\|display\|graphics\)\|Advanced Micro Devices"; then GPU_TYPE="amd";
 elif lspci 2>/dev/null | grep -iq "intel.*\(graphics\|display\|vga\)"; then GPU_TYPE="intel"; fi

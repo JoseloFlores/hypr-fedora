@@ -94,10 +94,17 @@ else
 fi
 
 echo "Greetd: $(systemctl is-enabled greetd 2>&1 || echo 'no habilitado') (tuigreet)"
-if systemctl cat greetd 2>/dev/null | grep -q "tuigreet"; then
-    echo "[OK] greetd usa tuigreet"
+# El comando del greeter vive en config.toml, no en la unit de systemd:
+# `systemctl cat greetd` jamás contiene "tuigreet" (falso negativo).
+if grep -q "tuigreet" /etc/greetd/config.toml 2>/dev/null; then
+    echo "[OK] greetd usa tuigreet ($(grep -m1 -o '/[^ ]*tuigreet' /etc/greetd/config.toml))"
 else
-    echo "[FALTA] greetd no apunta a tuigreet (re-ejecuta 60-greetd)"
+    echo "[FALTA] greetd no apunta a tuigreet en /etc/greetd/config.toml (re-ejecuta 60-greetd)"
+fi
+if getent passwd greeter >/dev/null 2>&1 || getent passwd _greetd >/dev/null 2>&1; then
+    echo "[OK] usuario greeter existe: $(getent passwd greeter 2>/dev/null || getent passwd _greetd)"
+else
+    echo "[FALTA] no existe usuario greeter ni _greetd (re-ejecuta 60-greetd)"
 fi
 echo "auto-timezone.timer (user $REAL_USER): $(sudo -u "$REAL_USER" env HOME="$USER_HOME" systemctl --user is-enabled auto-timezone.timer 2>&1 || echo 'no habilitado/sin sesión')"
 
@@ -115,7 +122,11 @@ fi
 
 if command -v hyprland >/dev/null 2>&1 || command -v Hyprland >/dev/null 2>&1; then
     echo "-> hyprland --verify-config:"
-    (hyprland --verify-config 2>&1 || Hyprland --verify-config 2>&1 || true) | tail -n 5 | tee -a "$LOG"
+    # Bajo sudo no hay XDG_RUNTIME_DIR y hyprland aborta (core): correrlo
+    # como el usuario real con un runtime temporal evita el ruido.
+    _RT="/run/user/$(id -u "$REAL_USER" 2>/dev/null || echo 1000)"
+    [ -d "$_RT" ] || _RT="$(sudo -u "$REAL_USER" env HOME="$USER_HOME" mktemp -d 2>/dev/null || echo /tmp)"
+    (sudo -u "$REAL_USER" env HOME="$USER_HOME" XDG_RUNTIME_DIR="$_RT" hyprland --verify-config 2>&1 || sudo -u "$REAL_USER" env HOME="$USER_HOME" XDG_RUNTIME_DIR="$_RT" Hyprland --verify-config 2>&1 || true) | tail -n 5 | tee -a "$LOG"
 fi
 
 if [ ${#missing[@]} -eq 0 ] && [ ${#bins_missing[@]} -eq 0 ]; then
