@@ -59,10 +59,12 @@ chmod 0755 /var/cache/tuigreet || true
 # Sesión Hyprland real: en Fedora el .desktop puede pedir `Hyprland` (H mayúscula)
 # o `hyprland` según versión/COPR. Elegir un --cmd inexistente deja tuigreet
 # en loop sin entrada gráfica: se valida antes de escribir config.toml.
+# OJO: el grep debe ser case-sensitive (sin -i): con -i siempre matcheaba
+# y forzaba Hyprland aunque el Exec fuera minúscula.
 HYPR_CMD="Hyprland"
 if [ ! -f /usr/share/wayland-sessions/hyprland.desktop ] && [ ! -f /usr/share/wayland-sessions/Hyprland.desktop ]; then
     log_warn "/usr/share/wayland-sessions/hyprland.desktop no existe aún (¿40-hypr pendiente?). Se usa --cmd Hyprland y 90-services no enmascarará tty1."
-elif grep -qi '^Exec=.*Hyprland' /usr/share/wayland-sessions/hyprland.desktop /usr/share/wayland-sessions/Hyprland.desktop 2>/dev/null; then
+elif grep -q '^Exec=.*Hyprland' /usr/share/wayland-sessions/hyprland.desktop /usr/share/wayland-sessions/Hyprland.desktop 2>/dev/null; then
     HYPR_CMD="Hyprland"
 else
     # El .desktop existe pero su Exec es minúscula (p.ej. `Exec=hyprland`).

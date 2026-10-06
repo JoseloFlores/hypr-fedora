@@ -26,10 +26,15 @@ rfkill unblock all 2>/dev/null || true
 systemctl disable sddm lightdm gdm 2>/dev/null || true
 # tty1 solo se enmascara si greetd quedó sano (config + tuigreet + sesión).
 # Si no, se deja getty activo para no perder el login en hardware real.
+# NOTA: se exige UNA de las dos sesiones (hyprland.desktop o Hyprland.desktop),
+# no las dos: pedir ambas con `ls A B` siempre fallaba y dejaba getty+greetd
+# peleando por tty1 (boot a TTY sin tuigreet).
 GREET_OK=1
 grep -q "tuigreet" /etc/greetd/config.toml 2>/dev/null || GREET_OK=0
 [ -x "$(command -v tuigreet || echo /usr/sbin/tuigreet)" ] || GREET_OK=0
-ls /usr/share/wayland-sessions/hyprland.desktop /usr/share/wayland-sessions/Hyprland.desktop &>/dev/null || GREET_OK=0
+if [ ! -f /usr/share/wayland-sessions/hyprland.desktop ] && [ ! -f /usr/share/wayland-sessions/Hyprland.desktop ]; then
+    GREET_OK=0
+fi
 id greeter &>/dev/null || id _greetd &>/dev/null || GREET_OK=0
 if [ "$GREET_OK" = "1" ]; then
     systemctl mask getty@tty1.service 2>/dev/null || true
