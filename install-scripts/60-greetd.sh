@@ -56,16 +56,34 @@ mkdir -p /var/cache/tuigreet
 chown -R "$GREET_USER": /var/cache/tuigreet || true
 chmod 0755 /var/cache/tuigreet || true
 
+# Sesión Hyprland real: en Fedora el .desktop puede pedir `Hyprland` (H mayúscula)
+# o `hyprland` según versión/COPR. Elegir un --cmd inexistente deja tuigreet
+# en loop sin entrada gráfica: se valida antes de escribir config.toml.
+HYPR_CMD="Hyprland"
+if [ ! -f /usr/share/wayland-sessions/hyprland.desktop ] && [ ! -f /usr/share/wayland-sessions/Hyprland.desktop ]; then
+    log_warn "/usr/share/wayland-sessions/hyprland.desktop no existe aún (¿40-hypr pendiente?). Se usa --cmd Hyprland y 90-services no enmascarará tty1."
+elif grep -qi '^Exec=.*Hyprland' /usr/share/wayland-sessions/hyprland.desktop /usr/share/wayland-sessions/Hyprland.desktop 2>/dev/null; then
+    HYPR_CMD="Hyprland"
+else
+    # El .desktop existe pero su Exec es minúscula (p.ej. `Exec=hyprland`).
+    HYPR_CMD="$(grep -h -m1 '^Exec=' /usr/share/wayland-sessions/hyprland.desktop 2>/dev/null | cut -d= -f2 | awk '{print $1}' | xargs basename 2>/dev/null || echo hyprland)"
+    [ -z "$HYPR_CMD" ] && HYPR_CMD="hyprland"
+fi
+log "-> sesión Hyprland: --cmd $HYPR_CMD"
+
+# Backup previo (no solo .bak-tuigreet post-escritura) para poder revertir.
+[ -f /etc/greetd/config.toml ] && cp -a /etc/greetd/config.toml "/etc/greetd/config.toml.bak-$(date +%Y%m%d-%H%M%S)" 2>/dev/null || true
+
 cat > /etc/greetd/config.toml <<EOF
 [terminal]
 vt = 1
 [default_session]
-# Login texto con tuigreet (Hyprland capital H = sesión wayland de Fedora).
-command = "$TUIGREET_BIN --time --remember --remember-session --asterisks --sessions /usr/share/wayland-sessions --cmd Hyprland"
+# Login texto con tuigreet (sesión validada contra /usr/share/wayland-sessions).
+command = "$TUIGREET_BIN --time --remember --remember-session --asterisks --sessions /usr/share/wayland-sessions --cmd $HYPR_CMD"
 user = "$GREET_USER"
 EOF
 cp -a /etc/greetd/config.toml /etc/greetd/config.toml.bak-tuigreet 2>/dev/null || true
-log "-> tuigreet configurado ($TUIGREET_BIN, usuario $GREET_USER, sesión Hyprland)"
+log "-> tuigreet configurado ($TUIGREET_BIN, usuario $GREET_USER, sesión $HYPR_CMD)"
 
 usermod -aG video,render,input "$GREET_USER" 2>/dev/null || usermod -aG video,input "$GREET_USER" || true
 usermod -aG video,render,input,audio "$REAL_USER" || true

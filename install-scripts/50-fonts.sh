@@ -17,6 +17,11 @@ fi
 
 sudo -u "$REAL_USER" env HOME="$USER_HOME" mkdir -p "$MESLO_DIR" "$SYMBOLS_DIR"
 
+# --only 50-fonts en Everything mínima puede correr sin 30-base (sin wget/unzip).
+command -v wget &>/dev/null || dnf_install_resilient wget || true
+command -v unzip &>/dev/null || dnf_install_resilient unzip || true
+command -v fc-cache &>/dev/null || dnf_install_resilient fontconfig || true
+
 install_nerd_font() {
     local url="$1"
     local dest="$2"
@@ -24,6 +29,8 @@ install_nerd_font() {
     if sudo -u "$REAL_USER" env HOME="$USER_HOME" wget -q --show-progress --tries=5 --waitretry=3 --timeout=15 -O "$tmpzip" "$url"; then
         sudo -u "$REAL_USER" env HOME="$USER_HOME" unzip -o -q "$tmpzip" -d "$dest"
         rm -f "$tmpzip"
+    else
+        log_warn "no se pudo descargar $(basename "$url") (revisa red a github.com)."
     fi
 }
 

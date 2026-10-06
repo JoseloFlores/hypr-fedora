@@ -34,6 +34,10 @@ if [ $FULL -eq 1 ]; then
     rm -f /etc/NetworkManager/conf.d/10-globally-managed-devices.conf
     rm -f /etc/udev/rules.d/90-backlight.rules
     rm -f /etc/xdg/xdg-desktop-portal/hyprland-portals.conf
+    # Al quitar greetd hay que devolver tty1 a getty, si no el equipo
+    # arranca sin login en la consola principal (hardware real).
+    systemctl unmask getty@tty1.service 2>/dev/null || true
+    systemctl enable getty@tty1.service 2>/dev/null || true
     systemctl daemon-reload || true
     echo "NOTA: no se purgan paquetes (usa 'dnf autoremove hyprland noctalia' manual si lo quieres)."
 fi
