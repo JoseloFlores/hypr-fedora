@@ -16,20 +16,25 @@ fi
 dnf_install_resilient gnome-keyring gnome-keyring-pam || true
 
 if [ ! -f /etc/pam.d/greetd ]; then
+    # Plantilla Fedora (system-auth, no system-login de Arch): si esto falla
+    # no hay login, así que se usan los stacks estándar de Fedora.
     cat > /etc/pam.d/greetd <<'PAMGREETD'
 #%PAM-1.0
-auth       substack     system-login
+auth       substack     system-auth
 auth       optional     pam_gnome_keyring.so
-account    include      system-login
-password   include      system-login
-session    include      system-login
+account    include      system-auth
+password   include      system-auth
+session    include      system-auth
 session    optional     pam_gnome_keyring.so auto_start
 PAMGREETD
     log "-> /etc/pam.d/greetd creado (plantilla Fedora + keyring)"
 fi
 # Normaliza siempre (evita duplicados y orden incorrecto que deja el llavero bloqueado).
 sed -i '/pam_gnome_keyring\.so/d' /etc/pam.d/greetd
-if grep -q "system-login" /etc/pam.d/greetd; then
+if grep -q "system-auth" /etc/pam.d/greetd; then
+    sed -i '/^auth.*substack.*system-auth/a auth       optional     pam_gnome_keyring.so' /etc/pam.d/greetd
+    echo 'session    optional     pam_gnome_keyring.so auto_start' >> /etc/pam.d/greetd
+elif grep -q "system-login" /etc/pam.d/greetd; then
     sed -i '/^auth.*substack.*system-login/a auth       optional     pam_gnome_keyring.so' /etc/pam.d/greetd
     echo 'session    optional     pam_gnome_keyring.so auto_start' >> /etc/pam.d/greetd
 elif grep -q "@include common-auth" /etc/pam.d/greetd; then

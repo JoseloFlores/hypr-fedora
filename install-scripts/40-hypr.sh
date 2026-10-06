@@ -8,10 +8,14 @@ common_init "40-hypr"
 
 log "4/10 Instalando Hyprland..."
 
-HYPR_PKGS=(hyprland hyprlock hypridle hyprpolkitagent xdg-desktop-portal-hyprland greetd tuigreet uwsm)
+# Obligatorios: si falta uno, no hay escritorio (reintento vía COPR).
+HYPR_PKGS=(hyprland hyprlock hypridle xdg-desktop-portal-hyprland greetd tuigreet)
+# Opcionales: mejoran pero no bloquean (polkit, lanzador uwsm, utilidades Qt).
+HYPR_OPT_PKGS=(hyprpolkitagent uwsm)
+HYPR_QT_PKGS=(hyprland-qtutils hyprland-qt-support)
 
 if [ "$DRY_RUN" = "1" ]; then
-    echo "[DRY-RUN] dnf install -y ${HYPR_PKGS[*]} (+ hyprland-qtutils best-effort)" | tee -a "$LOG"
+    echo "[DRY-RUN] dnf install -y ${HYPR_PKGS[*]} (+ best-effort ${HYPR_OPT_PKGS[*]} ${HYPR_QT_PKGS[*]})" | tee -a "$LOG"
     exit 0
 fi
 
@@ -20,8 +24,10 @@ if ! dnf_install_resilient "${HYPR_PKGS[@]}"; then
     dnf copr enable -y sdegler/hyprland || log_warn "COPR falló, reintentando de todos modos."
     dnf_install_resilient "${HYPR_PKGS[@]}"
 fi
-# Utilidades Qt de Hyprland (nombres que cambian entre versiones;
-# hyprland-qtutils no existe en F44, solo hyprland-qt-support).
-dnf_install_resilient hyprland-qtutils || log_warn "hyprland-qtutils no disponible, se omite."
-dnf_install_resilient hyprland-qt-support || true
+# Best-effort por separado: un nombre ausente en F44 no tumba el stack.
+for _opt in "${HYPR_OPT_PKGS[@]}" "${HYPR_QT_PKGS[@]}"; do
+    dnf_install_resilient "$_opt" || log_warn "$_opt no disponible, se omite."
+done
+# NOTA uwsm: queda instalado como lanzador opcional, pero tuigreet lanza
+# Hyprland directo (--cmd Hyprland validado en 60-greetd) por simplicidad.
 log_ok "Hyprland stack OK"

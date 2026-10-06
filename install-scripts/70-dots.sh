@@ -115,13 +115,14 @@ if [ -d "$REPO_ROOT/systemd/user" ]; then
         [ -f "$u" ] || continue
         sudo -u "$REAL_USER" env HOME="$USER_HOME" cp -f "$u" "$DOTS_CONF/systemd/user/"
     done
-    if sudo -u "$REAL_USER" env HOME="$USER_HOME" systemctl --user enable auto-timezone.timer 2>/dev/null; then
-        sudo -u "$REAL_USER" env HOME="$USER_HOME" systemctl --user start auto-timezone.timer 2>/dev/null || true
-        log "-> auto-timezone.timer habilitado (zona horaria automática cada 30 min)"
-    else
-        log_warn "auto-timezone.timer no se pudo habilitar ahora (sin sesión de usuario activa)."
-        echo "       En el primer inicio con Hyprland ejecuta: systemctl --user enable --now auto-timezone.timer"
-    fi
+    # linger para que el user-manager exista aunque el enable ocurra sin sesión.
+    loginctl enable-linger "$REAL_USER" 2>/dev/null || true
+    sudo -u "$REAL_USER" env HOME="$USER_HOME" systemctl --user daemon-reload 2>/dev/null || true
+    # La zona horaria la gestiona el timer DE SISTEMA (90-services):
+    # desactivar el user-timer legado para no duplicar detecciones.
+    sudo -u "$REAL_USER" env HOME="$USER_HOME" systemctl --user stop auto-timezone.timer 2>/dev/null || true
+    sudo -u "$REAL_USER" env HOME="$USER_HOME" systemctl --user disable auto-timezone.timer 2>/dev/null || true
+    log "-> user-manager listo (linger); auto-timezone lo lleva el timer de sistema"
 fi
 
 if [ -f "$REPO_ROOT/foot.ini" ] && [ ! -f "$DOTS_CONF/foot/foot.ini" ]; then

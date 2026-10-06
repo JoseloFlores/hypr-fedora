@@ -9,8 +9,10 @@ common_init "20-drivers"
 
 log "2/10 Detectando hardware e instalando drivers gráficos... (GPU=$GPU_TYPE)"
 
-# Base gráfica y seat para cualquier entorno (físico o VM).
-dnf_install_resilient mesa-dri-drivers mesa-vulkan-drivers mesa-libEGL mesa-libGL xorg-x11-server-Xwayland seatd libseat || true
+# Base gráfica para cualquier entorno (físico o VM).
+# NOTA: sin seatd: con systemd-logind + greetd el seat lo provee logind
+# (seatd compite con logind y no debe habilitarse en Fedora).
+dnf_install_resilient mesa-dri-drivers mesa-vulkan-drivers mesa-libEGL mesa-libGL xorg-x11-server-Xwayland libseat || true
 
 # Microcode (un solo paquete en Fedora que cubre Intel+AMD).
 dnf_install_resilient microcode_ctl || true

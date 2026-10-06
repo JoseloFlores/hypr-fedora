@@ -129,6 +129,15 @@ if [ "$EUID" -ne 0 ] && [ "$DRY_RUN" != "1" ]; then
     exit 1
 fi
 
+# Guard anti-root: con `sudo ./install.sh` SUDO_USER marca al dueño de los
+# dots. Entrar como root directo (típico netinstall) los mandaría a /root
+# y el usuario real quedaría sin escritorio.
+if [ -z "${SUDO_USER:-}" ] && [ "$DRY_RUN" != "1" ] && [ "${REAL_USER:-$(whoami)}" = "root" ]; then
+    echo "ERROR: estás como root sin sudo (sin SUDO_USER)." >&2
+    echo "Crea tu usuario y ejecuta: sudo ./install.sh" >&2
+    exit 1
+fi
+
 # --- Detección temprana (Fedora; se exporta a los módulos) ---
 # shellcheck disable=SC1091
 source /etc/os-release 2>/dev/null || true
@@ -165,7 +174,11 @@ export INSTALL_NOCTALIA NOCTALIA_PLUGINS INSTALL_FIREFOX INSTALL_THUNDERBIRD WAL
 
 echo "-> Sistema: Fedora $OS_VERSION | Usuario: $REAL_USER | GPU: $GPU_TYPE | DRY_RUN=$DRY_RUN"
 echo "-> Módulos: ${MODULES[*]}"
-if ! ping -c1 -W3 fedoraproject.org &>/dev/null; then
+# iputils (ping) puede faltar en la Everything mínima: curl/getent primero.
+if command -v curl &>/dev/null; then
+    curl -sI --max-time 8 https://fedoraproject.org &>/dev/null \
+        || echo "ADVERTENCIA: Sin conectividad a fedoraproject.org — intentando continuar..."
+elif ! ping -c1 -W3 fedoraproject.org &>/dev/null; then
     echo "ADVERTENCIA: Sin conectividad a fedoraproject.org — intentando continuar..."
 fi
 

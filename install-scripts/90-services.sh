@@ -8,7 +8,7 @@ common_init "90-services"
 log "9/10 Configurando servicios y preparación de red..."
 
 if [ "$DRY_RUN" = "1" ]; then
-    echo "[DRY-RUN] NM unmanaged-devices=none + enable NetworkManager/bluetooth/greetd + disable gdm/sddm + mask getty@tty1 (solo si greetd validado)" | tee -a "$LOG"
+    echo "[DRY-RUN] NM unmanaged-devices=none + enable NetworkManager/bluetooth/greetd + disable gdm/sddm + mask getty@tty1 (solo si greetd validado) + auto-timezone system timer" | tee -a "$LOG"
     exit 0
 fi
 
@@ -44,4 +44,20 @@ else
     log_warn "Re-ejecuta: sudo ./install.sh --only 60-greetd,90-services,99-final-check"
 fi
 systemctl enable greetd
+log "-> greetd habilitado"
+
+# --- auto-timezone como timer DE SISTEMA (timedatectl requiere root;
+# un timer --user jamás tendría permiso). 70-dots ya no lo habilita.
+if [ -f "$REPO_ROOT/auto_timezone.sh" ]; then
+    install -m 0755 "$REPO_ROOT/auto_timezone.sh" /usr/local/bin/auto_timezone.sh
+    if [ -d "$REPO_ROOT/systemd/system" ]; then
+        install -m 0644 "$REPO_ROOT/systemd/system/auto-timezone.service" /etc/systemd/system/auto-timezone.service
+        install -m 0644 "$REPO_ROOT/systemd/system/auto-timezone.timer" /etc/systemd/system/auto-timezone.timer
+        systemctl daemon-reload
+        systemctl enable --now auto-timezone.timer 2>/dev/null \
+            || systemctl enable auto-timezone.timer 2>/dev/null \
+            || log_warn "auto-timezone.timer no se pudo habilitar (revisa systemd)."
+        log "-> auto-timezone.timer de sistema habilitado (cada 30 min)"
+    fi
+fi
 log_ok "Servicios OK"

@@ -59,6 +59,10 @@ chmod 0755 /var/cache/tuigreet || true
 # Sesión Hyprland real: en Fedora el .desktop puede pedir `Hyprland` (H mayúscula)
 # o `hyprland` según versión/COPR. Elegir un --cmd inexistente deja tuigreet
 # en loop sin entrada gráfica: se valida antes de escribir config.toml.
+# NOTA uwsm: 40-hypr lo deja instalado como lanzador opcional, pero aquí se
+# lanza Hyprland directo a propósito (más simple; hyprpolkitagent va por
+# systemctl --user en hyprland.conf). Si prefieres sesión gestionada:
+# command = "$TUIGREET_BIN ... --cmd 'uwsm start hyprland.desktop'".
 # OJO: el grep debe ser case-sensitive (sin -i): con -i siempre matcheaba
 # y forzaba Hyprland aunque el Exec fuera minúscula.
 HYPR_CMD="Hyprland"

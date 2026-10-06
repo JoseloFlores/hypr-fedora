@@ -14,7 +14,9 @@ read -r -p "¿Continuar? [s/N] " ans
 [[ "$ans" =~ ^[sSyY]$ ]] || { echo "Cancelado."; exit 0; }
 
 DOTS_CONF="$USER_HOME/.config"
-echo "-> Deteniendo timer auto-timezone..."
+echo "-> Deteniendo timer auto-timezone (sistema + legado de usuario)..."
+systemctl stop auto-timezone.timer 2>/dev/null || true
+systemctl disable auto-timezone.timer 2>/dev/null || true
 sudo -u "$REAL_USER" env HOME="$USER_HOME" systemctl --user stop auto-timezone.timer 2>/dev/null || true
 sudo -u "$REAL_USER" env HOME="$USER_HOME" systemctl --user disable auto-timezone.timer 2>/dev/null || true
 rm -f "$DOTS_CONF/systemd/user/auto-timezone.service" "$DOTS_CONF/systemd/user/auto-timezone.timer"
@@ -30,6 +32,10 @@ echo "Backup en: $BAK"
 if [ $FULL -eq 1 ]; then
     echo "-> FULL: deshabilitando greetd y limpiando overrides del repo..."
     systemctl disable greetd 2>/dev/null || true
+    systemctl disable auto-timezone.timer 2>/dev/null || true
+    rm -f /etc/systemd/system/auto-timezone.service /etc/systemd/system/auto-timezone.timer
+    rm -f /usr/local/bin/auto_timezone.sh
+    systemctl daemon-reload || true
     rm -f /etc/systemd/system/greetd.service.d/override.conf
     rm -f /etc/NetworkManager/conf.d/10-globally-managed-devices.conf
     rm -f /etc/udev/rules.d/90-backlight.rules

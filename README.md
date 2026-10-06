@@ -114,9 +114,10 @@ Igual que en Debian (ver `hyprland.conf` y `NOCTALIA_COMANDOS.md`): `SUPER+Retur
 ### Zona horaria que viaja contigo
 
 ```bash
-systemctl --user list-timers auto-timezone.timer
-systemctl --user enable --now auto-timezone.timer   # si no estaba activo
+systemctl status auto-timezone.timer
+sudo systemctl enable --now auto-timezone.timer   # si no estaba activo
 ```
+El timer es **de sistema** (`/etc/systemd/system/auto-timezone.timer` → `/usr/local/bin/auto_timezone.sh`): `timedatectl set-timezone` requiere root y un timer `--user` jamás tendría permiso.
 
 ## 🔧 Hazlo tuyo
 

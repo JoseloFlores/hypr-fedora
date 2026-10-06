@@ -106,7 +106,7 @@ if getent passwd greeter >/dev/null 2>&1 || getent passwd _greetd >/dev/null 2>&
 else
     echo "[FALTA] no existe usuario greeter ni _greetd (re-ejecuta 60-greetd)"
 fi
-echo "auto-timezone.timer (user $REAL_USER): $(sudo -u "$REAL_USER" env HOME="$USER_HOME" systemctl --user is-enabled auto-timezone.timer 2>&1 || echo 'no habilitado/sin sesión')"
+echo "auto-timezone.timer (sistema): $({ systemctl is-enabled auto-timezone.timer 2>/dev/null || true; } | head -n1) | $({ systemctl is-active auto-timezone.timer 2>/dev/null || true; } | head -n1)"
 
 # Llavero: PAM solo auto-desbloquea el llavero `login`.
 if [ -f /etc/pam.d/greetd ]; then
@@ -127,6 +127,14 @@ if command -v hyprland >/dev/null 2>&1 || command -v Hyprland >/dev/null 2>&1; t
     _RT="/run/user/$(id -u "$REAL_USER" 2>/dev/null || echo 1000)"
     [ -d "$_RT" ] || _RT="$(sudo -u "$REAL_USER" env HOME="$USER_HOME" mktemp -d 2>/dev/null || echo /tmp)"
     (sudo -u "$REAL_USER" env HOME="$USER_HOME" XDG_RUNTIME_DIR="$_RT" hyprland --verify-config 2>&1 || sudo -u "$REAL_USER" env HOME="$USER_HOME" XDG_RUNTIME_DIR="$_RT" Hyprland --verify-config 2>&1 || true) | tail -n 5 | tee -a "$LOG"
+fi
+
+# Wallpapers: con WALLPAPER_URL vacío el dir queda vacío en limpia.
+_WP_DIR="${WALLPAPER_DIR:-${USER_HOME:-$HOME}/Imágenes/wallpapers/wallpaper}"
+if ls "$_WP_DIR"/*.{jpg,jpeg,png,webp} &>/dev/null; then
+    echo "[OK] wallpapers en $_WP_DIR"
+else
+    echo "[INFO] $_WP_DIR vacío (WALLPAPER_URL vacío; Noctalia arranca sin fondo e hyprlock sin semilla)"
 fi
 
 if [ ${#missing[@]} -eq 0 ] && [ ${#bins_missing[@]} -eq 0 ]; then

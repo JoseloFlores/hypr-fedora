@@ -37,6 +37,10 @@ if ! dnf copr --help &>/dev/null; then
     dnf_install_resilient dnf-plugins-core || true
 fi
 
+# Metadatos antes de repoquery: en limpia sin caché el query da vacío
+# y habilitaría el COPR aunque base sí traiga hyprland.
+dnf_update_resilient || true
+
 # COPR Hyprland (respaldo): solo si los repos base no ven hyprland.
 # sdegler/hyprland es el fork mantenido de solopasha/hyprland (Qt 6.10 en F43+).
 if ! dnf repoquery --available hyprland 2>/dev/null | grep -qi hyprland; then
@@ -54,5 +58,4 @@ else
     log "-> noctalia no está en repos base (normal en F42/F43): 71-noctalia usará COPR lionheartp/Hyprland."
 fi
 
-dnf_update_resilient || true
 log_ok "Repos OK (Fedora $FEDORA_VER)"
